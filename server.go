@@ -23,7 +23,8 @@ func viewFile (w http.ResponseWriter, r *http.Request) {
 
     requestFilePath, _ := strings.CutPrefix(r.URL.Path, "/view")
 
-    requestFilePath = path + requestFilePath
+    // requestFilePath = path + requestFilePath
+    requestFilePath = filepath.Join(path, requestFilePath)
 
     mimeType := mime.TypeByExtension(filepath.Ext(requestFilePath))
     w.Header().Set("Content-Type", mimeType)

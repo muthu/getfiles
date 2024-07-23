@@ -5,6 +5,7 @@
 - [reference1](https://rickyanto.com/understanding-go-standard-http-libraries-servemux-handler-handle-and-handlefunc/)
 - [reference2](https://www.integralist.co.uk/posts/understanding-golangs-func-type/)
 - [reference3](https://restfulapi.net/)
+- [reference4](https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types)
 
 ### ServeHTTP
 This function is needed to handle http requests of any type. The function declaration looks like this: `ServeHTTP (ResponseWriter, *Request)`

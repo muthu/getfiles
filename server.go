@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"log"
+	"mime"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -13,17 +15,24 @@ import (
 
 var path string
 
-type fileInfo struct {
-    Name string `json:"name"`
-    IsDir bool `json:"isDir"`
-}
-
 type directory struct {
-    Files []fileInfo
+    Files []string
 }
 
 func viewFile (w http.ResponseWriter, r *http.Request) {
 
+    requestFilePath, _ := strings.CutPrefix(r.URL.Path, "/view")
+
+    requestFilePath = path + requestFilePath
+
+    mimeType := mime.TypeByExtension(filepath.Ext(requestFilePath))
+    w.Header().Set("Content-Type", mimeType)
+
+    fileReader, err := os.Open(requestFilePath)
+    if err != nil {
+        log.Fatal(err)
+    }
+    io.Copy(w, fileReader)
 }
 
 func viewHandler (w http.ResponseWriter, r *http.Request) {
@@ -31,67 +40,59 @@ func viewHandler (w http.ResponseWriter, r *http.Request) {
         http.Error(w, "Method is not supported.", http.StatusNotFound)
     }
 
-    // requestFilePath = http.StripPrefix(r.URL.Path, "/view/")
-
     requestFilePath, _ := strings.CutPrefix(r.URL.Path, "/view")
-    fmt.Println(requestFilePath)
 
-    // if endpointSplit := strings.Split(r.URL.Path, "/"); len(endpointSplit) > 1 {
-    //     requestFilePath = endpointSplit[1]
-    // }
-    
-    // needs edge case test where number of path
-
-    path += requestFilePath
-    info, err := os.Stat(path)
+    // requestFilePath = path + requestFilePath
+    requestFilePath = filepath.Join(path, requestFilePath)
+    info, err := os.Stat(requestFilePath)
     if err != nil {
         log.Fatal(err)
     }
 
     if !info.IsDir() {
         viewFile(w, r)
-    }
+    } else {
+        entries, err := os.ReadDir(requestFilePath)
+        if err != nil {
+            log.Fatal(err)
+        }
+        var dir directory
 
-    entries, err := os.ReadDir(path)
-    if err != nil {
-        log.Fatal(err)
-    }
-    var dir directory
+        for _, file := range entries {
+            // f := fileInfo{file.Name(), file.IsDir()}
+            dir.Files = append(dir.Files, file.Name())
+        }
 
-    for _, file := range entries {
-        f := fileInfo{file.Name(), file.IsDir()}
-        dir.Files = append(dir.Files, f)
+        responseJson, err := json.Marshal(dir)
+        if err != nil {
+            log.Fatal(err)
+        }
+        w.Header().Set("Content-Type", "application/json")
+        w.WriteHeader(http.StatusOK)
+        w.Write(responseJson)
     }
-
-    // fmt.Printf("dir.files: %v\n", dir.Files)
-
-    responseJson, err := json.Marshal(dir)
-    if err != nil {
-        log.Fatal(err)
-    }
-    w.Header().Set("Content-Type", "application/json")
-    w.WriteHeader(http.StatusOK)
-    w.Write(responseJson)
-    // fmt.Println(string(responseJson))
-    // fmt.Printf("%T\n", entries)
-    // for _, e := range entries {
-    //     fmt.Fprintln(w, e.Name())
-    // }
 }
 
 func downloadFilesHandler(w http.ResponseWriter, r *http.Request) {
     if r.Method != "GET" {
         http.Error(w, "Method is not supported.", http.StatusNotFound)
     }
-    w.Header().Set("Content-Type", "application/json")
-
-    // path := "/Users/muthu/Desktop/scratch/notes/"
-    filename := r.PathValue("filename")
-    path = filepath.Join(path, filename)
+    requestFilePath := r.PathValue("filename")
+    fmt.Println(requestFilePath)
+    requestFilePath = filepath.Join(path, requestFilePath)
 
     // force a download with the content- disposition field
-    w.Header().Set("Content-Disposition", "attachment; filename="+filepath.Base(path))
-    fmt.Fprintln(w, path)
+    w.Header().Set("Content-Disposition", "attachment; filename="+filepath.Base(requestFilePath))
+    // fmt.Fprintln(w, requestFilePath)
+
+    mimeType := mime.TypeByExtension(filepath.Ext(requestFilePath))
+    w.Header().Set("Content-Type", mimeType)
+
+    fileReader, err := os.Open(requestFilePath)
+    if err != nil {
+        log.Fatal(err)
+    }
+    io.Copy(w, fileReader)
 }
 
 func main() {

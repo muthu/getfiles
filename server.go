@@ -78,7 +78,8 @@ func downloadFilesHandler(w http.ResponseWriter, r *http.Request) {
     if r.Method != "GET" {
         http.Error(w, "Method is not supported.", http.StatusNotFound)
     }
-    requestFilePath := r.PathValue("filename")
+    // requestFilePath := r.PathValue("filename")
+    requestFilePath, _ := strings.CutPrefix(r.URL.Path, "/download")
     fmt.Println(requestFilePath)
     requestFilePath = filepath.Join(path, requestFilePath)
 
@@ -110,7 +111,8 @@ func main() {
     fmt.Println(path)
 
     http.HandleFunc("/view/", viewHandler)
-    http.HandleFunc("/download/{filename}", downloadFilesHandler)
+    // http.HandleFunc("/download/{filename}", downloadFilesHandler)
+    http.HandleFunc("/download/", downloadFilesHandler)
 
     fmt.Println("starting server at port 8080")
     if err := http.ListenAndServe(":8080", nil); err != nil {
